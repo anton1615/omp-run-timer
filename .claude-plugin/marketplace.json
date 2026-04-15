@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "omp-run-timer",
+  "owner": {
+    "name": "Anton"
+  },
+  "description": "Single-plugin marketplace for the omp-run-timer extension.",
+  "plugins": [
+    {
+      "name": "omp-run-timer",
+      "description": "Shows live run duration in the working line and final status bar.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

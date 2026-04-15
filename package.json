@@ -1,0 +1,9 @@
+{
+  "name": "omp-run-timer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "omp": {
+    "extensions": ["./index.ts"]
+  }
+}
