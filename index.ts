@@ -9,7 +9,7 @@ import type {
   ToolExecutionStartEvent,
 } from "@oh-my-pi/pi-coding-agent";
 
-const STATUS_KEY = "run-timer";
+const STATUS_KEY = "0-run-timer";
 const DEFAULT_WORKING_LABEL = "Working…";
 const ELAPSED_ICON = "⏱";
 const INTERRUPT_SUFFIX = "(esc to interrupt)";
@@ -28,10 +28,27 @@ interface ActiveRun {
   startedAt: number;
   intent: string | undefined;
   ticker: IntervalHandle | undefined;
+  pausedAt: number | undefined;
+  accumulatedPausedMs: number;
 }
 
 export function formatElapsed(ms: number): string {
-  return `${(Math.max(0, ms) / 1000).toFixed(1)}s`;
+  const elapsedSeconds = Math.max(0, ms) / 1000;
+  const roundedTenths = Math.round(elapsedSeconds * 10) / 10;
+  if (roundedTenths < 60) {
+    return `${roundedTenths.toFixed(1)}s`;
+  }
+
+  const totalSeconds = Math.max(60, Math.floor(elapsedSeconds));
+  const seconds = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m${seconds}s`;
+  }
+
+  const minutes = totalMinutes % 60;
+  const hours = Math.floor(totalMinutes / 60);
+  return `${hours}hr${minutes}m${seconds}s`;
 }
 
 function normalizeIntent(intent: unknown): string | undefined {
@@ -39,10 +56,9 @@ function normalizeIntent(intent: unknown): string | undefined {
   const trimmed = intent.trim();
   return trimmed ? trimmed : undefined;
 }
-
 function buildWorkingMessage(intent: string | undefined, elapsedMs: number): string {
   const label = intent ?? DEFAULT_WORKING_LABEL;
-  return `${label} · ${ELAPSED_ICON} ${formatElapsed(elapsedMs)} ${INTERRUPT_SUFFIX}`;
+  return `${label} · ${formatElapsed(elapsedMs)} ${INTERRUPT_SUFFIX}`;
 }
 
 export function createRunTimerExtension(options: RunTimerOptions = {}) {
@@ -57,8 +73,13 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
 
   return function runTimerExtension(pi: ExtensionAPI): void {
     let activeRun: ActiveRun | undefined;
+    let lastWorkingMessage: string | undefined;
 
-    const getElapsedMs = () => (activeRun ? now() - activeRun.startedAt : 0);
+    const getElapsedMs = () => {
+      if (!activeRun) return 0;
+      const pausedMs = activeRun.pausedAt === undefined ? 0 : now() - activeRun.pausedAt;
+      return now() - activeRun.startedAt - activeRun.accumulatedPausedMs - pausedMs;
+    };
 
     const stopTicker = () => {
       if (!activeRun?.ticker) return;
@@ -66,9 +87,34 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
       activeRun.ticker = undefined;
     };
 
+    const pauseRun = () => {
+      if (!activeRun || activeRun.pausedAt !== undefined) return;
+      stopTicker();
+      activeRun.pausedAt = now();
+    };
+
+    const resumeRun = (ctx: ExtensionContext) => {
+      if (!activeRun || activeRun.pausedAt === undefined) return;
+      activeRun.accumulatedPausedMs += now() - activeRun.pausedAt;
+      activeRun.pausedAt = undefined;
+      startTicker(ctx);
+    };
+
+    const setWorkingMessage = (ctx: ExtensionContext, message: string) => {
+      if (message === lastWorkingMessage) return;
+      ctx.ui.setWorkingMessage(message);
+      lastWorkingMessage = message;
+    };
+
+    const clearWorkingMessage = (ctx: ExtensionContext) => {
+      if (lastWorkingMessage === undefined) return;
+      lastWorkingMessage = undefined;
+      ctx.ui.setWorkingMessage();
+    };
+
     const renderWorkingMessage = (ctx: ExtensionContext) => {
       if (!activeRun) return;
-      ctx.ui.setWorkingMessage(buildWorkingMessage(activeRun.intent, getElapsedMs()));
+      setWorkingMessage(ctx, buildWorkingMessage(activeRun.intent, getElapsedMs()));
     };
 
     const startTicker = (ctx: ExtensionContext) => {
@@ -76,7 +122,7 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
       stopTicker();
       activeRun.ticker = setTicker(() => {
         if (!activeRun) return;
-        ctx.ui.setWorkingMessage(buildWorkingMessage(activeRun.intent, getElapsedMs()));
+        renderWorkingMessage(ctx);
       }, tickMs);
     };
 
@@ -86,6 +132,8 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
         startedAt: now(),
         intent: undefined,
         ticker: undefined,
+        pausedAt: undefined,
+        accumulatedPausedMs: 0,
       };
       startTicker(ctx);
       return activeRun;
@@ -94,7 +142,7 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
     const resetUiState = (ctx: ExtensionContext) => {
       stopTicker();
       activeRun = undefined;
-      ctx.ui.setWorkingMessage();
+      clearWorkingMessage(ctx);
       ctx.ui.setStatus(STATUS_KEY, undefined);
     };
 
@@ -105,6 +153,8 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
         startedAt: now(),
         intent: undefined,
         ticker: undefined,
+        pausedAt: undefined,
+        accumulatedPausedMs: 0,
       };
       ctx.ui.setStatus(STATUS_KEY, undefined);
       startTicker(ctx);
@@ -113,28 +163,36 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
 
     const handleToolStart = (event: ToolExecutionStartEvent, ctx: ExtensionContext) => {
       if (!ctx.hasUI) return;
+      if (event.toolName === "ask") {
+        pauseRun();
+        return;
+      }
+
       const run = ensureRun(ctx);
-      run.intent = normalizeIntent(event.intent);
+      const nextIntent = normalizeIntent(event.intent);
+      if (nextIntent) run.intent = nextIntent;
       renderWorkingMessage(ctx);
     };
 
-    const handleToolEnd = (_event: ToolExecutionEndEvent, ctx: ExtensionContext) => {
+    const handleToolEnd = (event: ToolExecutionEndEvent, ctx: ExtensionContext) => {
       if (!ctx.hasUI || !activeRun) return;
-      activeRun.intent = undefined;
+      if (event.toolName === "ask") {
+        resumeRun(ctx);
+      }
       renderWorkingMessage(ctx);
     };
 
     const handleAgentEnd = (_event: AgentEndEvent, ctx: ExtensionContext) => {
       if (!ctx.hasUI) return;
       if (!activeRun) {
-        ctx.ui.setWorkingMessage();
+        clearWorkingMessage(ctx);
         return;
       }
       const totalDuration = formatElapsed(getElapsedMs());
       stopTicker();
       activeRun = undefined;
-      ctx.ui.setWorkingMessage();
-      ctx.ui.setStatus(STATUS_KEY, ctx.ui.theme.fg("dim", `${ELAPSED_ICON} Last run · ${totalDuration}`));
+      clearWorkingMessage(ctx);
+      ctx.ui.setStatus(STATUS_KEY, `${ELAPSED_ICON} Last run · ${totalDuration}`);
     };
 
     const handleSessionReset = (_event: SessionStartEvent | SessionSwitchEvent, ctx: ExtensionContext) => {
