@@ -220,7 +220,7 @@ describe("omp-run-timer", () => {
     clock.advance(200);
     await harness.emit("agent_end");
 
-    expect(harness.ui.statuses.at(-1)).toEqual({ key: "0-run-timer", text: "⏱ Last run · 1.0s" });
+    expect(harness.ui.statuses.at(-1)).toEqual({ key: "0-run-timer", text: "⏱ \u2007Last run · 1.0s" });
   });
 
   test("keeps counting through non-ask tools", async () => {
@@ -293,7 +293,7 @@ describe("omp-run-timer", () => {
     await harness.emit("agent_end");
 
     expect(harness.ui.workingMessages.at(-1)).toBeUndefined();
-    expect(harness.ui.statuses.at(-1)).toEqual({ key: "0-run-timer", text: "⏱ Last run · 2.3s" });
+    expect(harness.ui.statuses.at(-1)).toEqual({ key: "0-run-timer", text: "⏱ \u2007Last run · 2.3s" });
   });
 
   test("clears residual UI state on session lifecycle events", async () => {
@@ -374,6 +374,6 @@ describe("omp-run-timer", () => {
     expect(harness.ui.workingMessages.at(-1)).toBe("Reading config · 0.5s (esc to interrupt)");
 
     await harness.emit("agent_end");
-    expect(harness.ui.statuses.at(-1)).toEqual({ key: "0-run-timer", text: "⏱ Last run · 0.5s" });
+    expect(harness.ui.statuses.at(-1)).toEqual({ key: "0-run-timer", text: "⏱ \u2007Last run · 0.5s" });
   });
 });

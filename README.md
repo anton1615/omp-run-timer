@@ -23,7 +23,7 @@ Examples:
 
 Example:
 
-- `⏱ Last run · 2.3s`
+- `⏱  Last run · 2.3s`
 
 ## Time format
 

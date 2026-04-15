@@ -12,6 +12,8 @@ import type {
 const STATUS_KEY = "0-run-timer";
 const DEFAULT_WORKING_LABEL = "Working…";
 const ELAPSED_ICON = "⏱";
+// One ASCII space plus a figure space survives OMP footer status sanitization.
+const LAST_RUN_SPACER = " \u2007";
 const INTERRUPT_SUFFIX = "(esc to interrupt)";
 const DEFAULT_TICK_MS = 100;
 
@@ -192,7 +194,7 @@ export function createRunTimerExtension(options: RunTimerOptions = {}) {
       stopTicker();
       activeRun = undefined;
       clearWorkingMessage(ctx);
-      ctx.ui.setStatus(STATUS_KEY, `${ELAPSED_ICON} Last run · ${totalDuration}`);
+      ctx.ui.setStatus(STATUS_KEY, `${ELAPSED_ICON}${LAST_RUN_SPACER}Last run · ${totalDuration}`);
     };
 
     const handleSessionReset = (_event: SessionStartEvent | SessionSwitchEvent, ctx: ExtensionContext) => {
