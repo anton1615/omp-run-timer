@@ -16,8 +16,8 @@ OMP extension that shows per-run elapsed time in the interactive working line an
 Examples:
 
 - `Working… · 12.3s (esc to interrupt)`
-- `Reading config · 1m0s (esc to interrupt)`
-- `Searching files · 1hr0m0s (esc to interrupt)`
+- `Reading config · 1m 0s (esc to interrupt)`
+- `Searching files · 1hr 0m 0s (esc to interrupt)`
 
 ### Final status line
 
@@ -28,10 +28,10 @@ Example:
 ## Time format
 
 - Under 60 seconds: `12.3s`
-- 60 seconds to under 60 minutes: `1m0s`
-- 60 minutes and above: `1hr0m0s`
+- 60 seconds to under 60 minutes: `1m 0s`
+- 60 minutes and above: `1hr 0m 0s`
 
-Minute-boundary rounding is handled so values such as `59.95s` roll to `1m0s` instead of showing `60.0s`.
+Minute-boundary rounding is handled so values such as `59.95s` roll to `1m 0s` instead of showing `60.0s`.
 
 ## Install
 

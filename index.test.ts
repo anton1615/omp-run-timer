@@ -105,13 +105,13 @@ function createHarness() {
 }
 
 describe("formatElapsed", () => {
-  test("formats seconds, minutes, and hours without ANSI markup concerns", () => {
+  test("formats seconds, minutes, and hours with spaces between units", () => {
     expect(formatElapsed(12_300)).toBe("12.3s");
     expect(formatElapsed(59_900)).toBe("59.9s");
-    expect(formatElapsed(59_950)).toBe("1m0s");
-    expect(formatElapsed(60_000)).toBe("1m0s");
-    expect(formatElapsed(3_599_900)).toBe("59m59s");
-    expect(formatElapsed(3_600_000)).toBe("1hr0m0s");
+    expect(formatElapsed(59_950)).toBe("1m 0s");
+    expect(formatElapsed(60_000)).toBe("1m 0s");
+    expect(formatElapsed(3_599_900)).toBe("59m 59s");
+    expect(formatElapsed(3_600_000)).toBe("1hr 0m 0s");
   });
 });
 
