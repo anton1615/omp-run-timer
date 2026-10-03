@@ -1,6 +1,22 @@
 # omp-run-timer
 
+> [!WARNING]
+> **Unmaintained — retired on 2026-10-03.**
+> Live turn timing is now built into OMP 18.5 through the `pi` status segment; uninstall this extension and use the built-in timer instead.
+
 OMP extension that shows per-run elapsed time in the interactive working line and the final run duration in the footer status area.
+
+## Why this extension was retired
+
+- OMP 18.5 already ships a live turn timer in the built-in `pi` status segment (pi-tui 18.0.10, 2026-08-28): `pi-tui/src/status-line/segments.ts:220-246` (`brandTimer`) and `pi-tui/src/status-line/component.ts:986-989` (`getTurnElapsedMs`). The local `statusLine.preset: default` begins with the `pi` segment, so the timing is visible out of the box.
+- This extension writes the same working-line surface on a 100 ms ticker via `ctx.ui.setWorkingMessage()` (`index.ts:105-120`), while core also writes that value from `tool_execution_start` based on tool intent (`src/modes/controllers/event-controller.ts:660-662` and `1738-1741`; the underlying `src/modes/interactive-mode.ts:7358-7372` stores a single string). Two writers on one display surface is a mild conflict — not fatal, but a recurring maintenance cost.
+- The only thing core does not provide is the `Last run` footer.
+- Weighed against the ongoing competition with the built-in timer, the extension is retired rather than kept in sync.
+
+### Migration
+
+- Remove this extension (`omp plugin uninstall omp-run-timer`, or unlink it during local development) and use the built-in `pi` segment timer.
+- If you still want "previous total duration", add a `time_spent` segment yourself.
 
 ## What it does
 
